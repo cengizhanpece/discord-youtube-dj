@@ -69,6 +69,12 @@
     </select>
   </header>
 
+  <section id="update" class="card hidden">
+    <h2 id="updateTitle"></h2>
+    <p class="muted small" data-i18n="updateText"></p>
+    <a class="btn" id="updateLink" target="_blank" rel="noopener" data-i18n="updateBtn"></a>
+  </section>
+
   <!-- 1) Setup: no or invalid token -->
   <section id="setup" class="card hidden">
     <h2 data-i18n="setupTitle"></h2>
@@ -179,6 +185,9 @@ const I18N = {
     inviteIntro: 'Your bot is online. Invite it to a Discord server where you can manage the server.',
     inviteBtn: 'Invite to server',
     inviteDone: "I've added it",
+    updateTitle: 'Version {v} is available',
+    updateText: 'Download and run the new installer. No need to uninstall first: your settings and token are kept. If you use the extension, unzip the new one over the old folder and click ↻ on chrome://extensions.',
+    updateBtn: 'Download update',
     adminTitle: 'Need private channels?',
     adminText: 'Inviting as Administrator lets the bot see every private channel, but anyone who gets your bot token could then do anything on that server. Prefer giving the bot access to just the channels you need.',
     inviteAdmin: 'Invite as Administrator',
@@ -224,6 +233,9 @@ const I18N = {
     inviteIntro: 'Botun çevrimiçi. Yönetebildiğin bir Discord sunucusuna davet et.',
     inviteBtn: 'Sunucuya davet et',
     inviteDone: 'Ekledim',
+    updateTitle: '{v} sürümü çıktı',
+    updateText: 'Yeni kurulum dosyasını indirip çalıştır. Önce kaldırmana gerek yok: ayarların ve token\'ın korunur. Eklentiyi kullanıyorsan yenisini eski klasörün üzerine çıkar ve chrome://extensions sayfasında ↻\'ye tıkla.',
+    updateBtn: 'Güncellemeyi indir',
     adminTitle: 'Gizli kanallar mı lazım?',
     adminText: 'Yönetici olarak davet edersen bot tüm gizli kanalları görür; ama bot token\'ını ele geçiren biri o sunucuda her şeyi yapabilir. Mümkünse bota sadece ihtiyacın olan kanallarda erişim ver.',
     inviteAdmin: 'Yönetici olarak davet et',
@@ -308,6 +320,12 @@ function render() {
 
   for (const id of ['inviteBtn', 'inviteBtn2']) if (s.inviteUrl) $(id).href = s.inviteUrl;
   document.querySelectorAll('.inviteAdmin').forEach((a) => { if (s.inviteUrlAdmin) a.href = s.inviteUrlAdmin; });
+
+  $('update').classList.toggle('hidden', !s.updateAvailable);
+  if (s.updateAvailable) {
+    $('updateTitle').textContent = t('updateTitle').replace('{v}', s.latestVersion);
+    $('updateLink').href = s.updateUrl;
+  }
   $('extLink').href = `${REPO}/releases/latest`;
 
   if (s.nowPlaying) {

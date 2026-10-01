@@ -192,9 +192,27 @@ The bot listens on `127.0.0.1` only. Browser requests are accepted only from the
 | `/play` doesn't show up | Wait a few minutes after the first start, or re-invite the bot with the dashboard's invite link (it includes the commands scope). |
 | "Sign in to confirm you're not a bot" in the log | YouTube is rate-limiting your IP. Wait a while. |
 
+## Updating
+
+When a new release is out, the dashboard (and the extension popup) shows **Download update**.
+
+- **Bot (Windows):** download the new `DiscordYouTubeDJ-Setup-x.y.z.exe` and run it. You don't need to uninstall first. The installer stops the running bot, replaces the program files, and keeps your settings and token.
+- **Bot (from source):** `git pull`, then `npm install` in `bot/` and restart.
+- **Extension:** unzip the new zip **over the same folder**, then click ↻ on the extension card in `chrome://extensions`. Use the same folder: a different path counts as a new extension, and its settings start from scratch.
+
 ## Uninstall
 
-Windows: **Settings → Apps → Discord YouTube DJ → Uninstall**. Your settings folder (with the token) is kept. Delete `%APPDATA%\discord-youtube-dj` to remove it too. To revoke the bot completely, delete the application in the Developer Portal.
+**Windows:** **Settings → Apps → Discord YouTube DJ → Uninstall**, or **Start menu → Discord YouTube DJ → Uninstall Discord YouTube DJ**. The uninstaller:
+
+1. stops the bot (and any running yt-dlp),
+2. removes the program, the Start menu entries and the "start with Windows" entry,
+3. asks whether to also delete your settings folder (`%APPDATA%\discord-youtube-dj`: bot token, selected channel, logs, yt-dlp). Choose **No** if you plan to reinstall,
+4. lists what only you can remove:
+   - **Browser extension:** `chrome://extensions` → **Remove**, then delete its folder.
+   - **Discord bot:** it stays in your servers until you kick it, or delete the app in the [Developer Portal](https://discord.com/developers/applications) (**Delete App**), which also invalidates the token.
+   - **MCP:** `claude mcp remove discord-music`, or remove the `discord-music` entry from `claude_desktop_config.json`.
+
+**From source:** stop the bot, then delete the cloned folder and the settings folder listed [above](#settings-secrets-and-files).
 
 ---
 

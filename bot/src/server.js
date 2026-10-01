@@ -13,6 +13,7 @@ import { config } from './config.js';
 import { ytdlp } from './ytdlp.js';
 import { log, logPath } from './log.js';
 import * as player from './player.js';
+import { getUpdateInfo } from './updates.js';
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const isUrl = (s) => /^https?:\/\//i.test(s);
@@ -61,6 +62,7 @@ export function createServer({ version }) {
   // --- read ---------------------------------------------------------------
   app.get('/api/status', route(async () => ({
     version,
+    ...getUpdateInfo(version),
     ytdlpVersion: await ytdlp.version(),
     configPath: config.path,
     logPath,

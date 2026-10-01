@@ -19,6 +19,13 @@ async function api(path, body) {
   return data;
 }
 
+/** "1.2.10" > "1.2.9" */
+function isNewer(a, b) {
+  const [x, y] = [a, b].map((v) => v.split('-')[0].split('.').map((n) => parseInt(n) || 0));
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+}
+
 function setStatus(kind, text) {
   $('dot').className = 'dot ' + kind;
   $('statusText').textContent = text;
@@ -36,6 +43,11 @@ async function refresh() {
     return;
   }
   $('offline').classList.add('hidden');
+
+  // The bot knows the latest release; compare it with this extension's own version.
+  const newer = !!status.latestVersion && isNewer(status.latestVersion, chrome.runtime.getManifest().version);
+  $('updateLink').classList.toggle('hidden', !newer);
+  $('updateLink').href = status.updateUrl;
 
   if (status.discord !== 'ready') {
     setStatus('err', msg('statusNeedsSetup'));

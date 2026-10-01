@@ -1,18 +1,53 @@
 {
-  "extName": { "message": "Discord YouTube DJ" },
-  "extDescription": { "message": "Plays whatever you open on YouTube or YouTube Music in your Discord voice channel." },
-  "toggleTitle": { "message": "Play YouTube in Discord" },
-  "statusOffline": { "message": "Bot is not running" },
-  "statusNeedsSetup": { "message": "Bot needs setup — open the dashboard" },
-  "offlineText": { "message": "Can't reach the bot. Start \"Discord YouTube DJ\" from the Start menu, or install it first." },
-  "downloadBot": { "message": "Download the bot" },
-  "voiceChannel": { "message": "Voice channel" },
-  "pickChannel": { "message": "— pick a voice channel —" },
-  "nowPlaying": { "message": "Now playing" },
-  "nothingPlaying": { "message": "Nothing" },
-  "stop": { "message": "Stop" },
-  "settings": { "message": "Settings" },
-  "muteTab": { "message": "Mute the YouTube tab while playing in Discord" },
-  "botAddress": { "message": "Bot address" },
-  "openDashboard": { "message": "Open dashboard" }
+  "extName": {
+    "message": "Discord YouTube DJ"
+  },
+  "extDescription": {
+    "message": "Plays whatever you open on YouTube or YouTube Music in your Discord voice channel."
+  },
+  "toggleTitle": {
+    "message": "Play YouTube in Discord"
+  },
+  "statusOffline": {
+    "message": "Bot is not running"
+  },
+  "statusNeedsSetup": {
+    "message": "Bot needs setup — open the dashboard"
+  },
+  "offlineText": {
+    "message": "Can't reach the bot. Start \"Discord YouTube DJ\" from the Start menu, or install it first."
+  },
+  "downloadBot": {
+    "message": "Download the bot"
+  },
+  "voiceChannel": {
+    "message": "Voice channel"
+  },
+  "pickChannel": {
+    "message": "— pick a voice channel —"
+  },
+  "nowPlaying": {
+    "message": "Now playing"
+  },
+  "nothingPlaying": {
+    "message": "Nothing"
+  },
+  "stop": {
+    "message": "Stop"
+  },
+  "settings": {
+    "message": "Settings"
+  },
+  "muteTab": {
+    "message": "Mute the YouTube tab while playing in Discord"
+  },
+  "botAddress": {
+    "message": "Bot address"
+  },
+  "openDashboard": {
+    "message": "Open dashboard"
+  },
+  "updateAvailable": {
+    "message": "⬆ Update available"
+  }
 }

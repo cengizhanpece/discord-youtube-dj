@@ -1,18 +1,53 @@
 {
-  "extName": { "message": "Discord YouTube DJ" },
-  "extDescription": { "message": "YouTube ya da YouTube Music'te açtığın her şeyi Discord ses kanalında çalar." },
-  "toggleTitle": { "message": "YouTube'u Discord'da çal" },
-  "statusOffline": { "message": "Bot çalışmıyor" },
-  "statusNeedsSetup": { "message": "Bot kurulmamış — dashboard'u aç" },
-  "offlineText": { "message": "Bota ulaşılamıyor. Başlat menüsünden \"Discord YouTube DJ\"i çalıştır ya da önce kur." },
-  "downloadBot": { "message": "Botu indir" },
-  "voiceChannel": { "message": "Ses kanalı" },
-  "pickChannel": { "message": "— bir ses kanalı seç —" },
-  "nowPlaying": { "message": "Şu an çalıyor" },
-  "nothingPlaying": { "message": "Hiçbir şey" },
-  "stop": { "message": "Durdur" },
-  "settings": { "message": "Ayarlar" },
-  "muteTab": { "message": "Discord'da çalarken YouTube sekmesini sessize al" },
-  "botAddress": { "message": "Bot adresi" },
-  "openDashboard": { "message": "Dashboard'u aç" }
+  "extName": {
+    "message": "Discord YouTube DJ"
+  },
+  "extDescription": {
+    "message": "YouTube ya da YouTube Music'te açtığın her şeyi Discord ses kanalında çalar."
+  },
+  "toggleTitle": {
+    "message": "YouTube'u Discord'da çal"
+  },
+  "statusOffline": {
+    "message": "Bot çalışmıyor"
+  },
+  "statusNeedsSetup": {
+    "message": "Bot kurulmamış — dashboard'u aç"
+  },
+  "offlineText": {
+    "message": "Bota ulaşılamıyor. Başlat menüsünden \"Discord YouTube DJ\"i çalıştır ya da önce kur."
+  },
+  "downloadBot": {
+    "message": "Botu indir"
+  },
+  "voiceChannel": {
+    "message": "Ses kanalı"
+  },
+  "pickChannel": {
+    "message": "— bir ses kanalı seç —"
+  },
+  "nowPlaying": {
+    "message": "Şu an çalıyor"
+  },
+  "nothingPlaying": {
+    "message": "Hiçbir şey"
+  },
+  "stop": {
+    "message": "Durdur"
+  },
+  "settings": {
+    "message": "Ayarlar"
+  },
+  "muteTab": {
+    "message": "Discord'da çalarken YouTube sekmesini sessize al"
+  },
+  "botAddress": {
+    "message": "Bot adresi"
+  },
+  "openDashboard": {
+    "message": "Dashboard'u aç"
+  },
+  "updateAvailable": {
+    "message": "⬆ Güncelleme var"
+  }
 }
