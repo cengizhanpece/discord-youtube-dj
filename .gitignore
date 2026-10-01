@@ -1,0 +1,14 @@
+node_modules/
+installer/build/
+installer/output/
+*.log
+.env
+.env.*
+# Never commit personal settings / secrets
+config.json
+cookies.txt
+cookiefile.txt
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

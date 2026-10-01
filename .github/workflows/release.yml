@@ -1,0 +1,71 @@
+# Push a tag like v1.2.0 → builds the Windows installer and the extension zip
+# and attaches both to a GitHub Release.
+#
+#   git tag v1.0.0 && git push origin v1.0.0
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Version from tag
+        id: v
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF#refs/tags/v}"; else V="0.0.0-dev"; fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          # Keep the versions shown in the app and extension in sync with the tag.
+          node -e "for (const f of ['bot/package.json','extension/manifest.json']) { const fs=require('fs'); const j=JSON.parse(fs.readFileSync(f)); j.version='${V%%-*}'; fs.writeFileSync(f, JSON.stringify(j,null,2)+'\n'); }"
+
+      - name: Stage installer files
+        run: node installer/build.mjs
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DAppVersion=${{ steps.v.outputs.version }}" installer\setup.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Zip extension
+        shell: pwsh
+        run: Compress-Archive -Path extension\* -DestinationPath "DiscordYouTubeDJ-Extension-${{ steps.v.outputs.version }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            installer/output/*.exe
+            *.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            installer/output/*.exe
+            DiscordYouTubeDJ-Extension-*.zip

@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discord YouTube DJ</title>
+<link rel="icon" href="icon.png">
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --text: #1f2328; --muted: #656d76; --border: #d8dee4;
+    --accent: #5865f2; --accent-text: #fff; --ok: #1a7f37; --err: #cf222e; --warn: #9a6700;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111214; --card: #1c1d21; --text: #e6e7ea; --muted: #9a9ca3; --border: #2e3036;
+      --accent: #7983f5; --ok: #3fb950; --err: #f85149; --warn: #d29922; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  header img { width: 40px; height: 40px; border-radius: 10px; }
+  header h1 { font-size: 20px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header .lang { margin-left: auto; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 16px; margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  ol.steps { padding-left: 20px; margin: 0 0 16px; }
+  ol.steps li { margin-bottom: 10px; }
+  a { color: var(--accent); }
+  button, .btn { appearance: none; border: 1px solid transparent; background: var(--accent); color: var(--accent-text);
+    padding: 9px 16px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+  button.secondary, .btn.secondary { background: transparent; color: var(--text); border-color: var(--border); }
+  button:disabled { opacity: .6; cursor: wait; }
+  input, select { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font: inherit; }
+  .row { display: flex; gap: 8px; }
+  .row > input, .row > select { flex: 1; min-width: 0; }
+  .msg { margin-top: 10px; font-size: 14px; min-height: 1em; }
+  .msg.err { color: var(--err); } .msg.ok { color: var(--ok); }
+  .status { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.ok { background: var(--ok); } .dot.err { background: var(--err); } .dot.warn { background: var(--warn); }
+  .np-title { font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
+  .results { list-style: none; padding: 0; margin: 12px 0 0; }
+  .results li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+  .results li .t { flex: 1; min-width: 0; }
+  .results li .t div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 8px 0 0; }
+  details summary { cursor: pointer; font-weight: 600; }
+  .hidden { display: none !important; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } .row { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.png" alt="">
+    <div>
+      <h1>Discord YouTube DJ</h1>
+      <div class="sub" id="botLine">…</div>
+    </div>
+    <select class="lang" id="lang" style="width:auto">
+      <option value="en">English</option>
+      <option value="tr">Türkçe</option>
+    </select>
+  </header>
+
+  <!-- 1) Setup: no or invalid token -->
+  <section id="setup" class="card hidden">
+    <h2 data-i18n="setupTitle"></h2>
+    <p class="muted" data-i18n="setupIntro"></p>
+    <ol class="steps">
+      <li data-i18n-html="step1"></li>
+      <li data-i18n-html="step2"></li>
+      <li data-i18n-html="step3"></li>
+    </ol>
+    <div class="row">
+      <input id="token" type="password" autocomplete="off" spellcheck="false" data-i18n-placeholder="tokenPlaceholder">
+      <button id="saveToken" data-i18n="save"></button>
+    </div>
+    <div class="msg" id="setupMsg"></div>
+    <p class="small muted" data-i18n="tokenNote"></p>
+  </section>
+
+  <!-- 2) Connected but not in any server -->
+  <section id="invite" class="card hidden">
+    <h2 data-i18n="inviteTitle"></h2>
+    <p class="muted" data-i18n="inviteIntro"></p>
+    <a class="btn" id="inviteBtn" target="_blank" rel="noopener" data-i18n="inviteBtn"></a>
+    <button class="secondary" id="inviteDone" data-i18n="inviteDone"></button>
+  </section>
+
+  <!-- 3) Ready -->
+  <section id="ready" class="hidden">
+    <div class="card">
+      <h2 data-i18n="nowPlaying"></h2>
+      <div id="np"></div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="channelTitle"></h2>
+      <select id="channel"></select>
+      <div class="msg" id="channelMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="playTitle"></h2>
+      <div class="row">
+        <input id="song" data-i18n-placeholder="songPlaceholder">
+        <button id="playBtn" data-i18n="play"></button>
+        <button id="searchBtn" class="secondary" data-i18n="search"></button>
+      </div>
+      <div class="msg" id="playMsg"></div>
+      <ul class="results" id="results"></ul>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="moreTitle"></h2>
+      <div class="grid2">
+        <div>
+          <strong data-i18n="extTitle"></strong>
+          <p class="small muted" data-i18n="extText"></p>
+          <a class="btn secondary" id="extLink" target="_blank" rel="noopener" data-i18n="extBtn"></a>
+        </div>
+        <div>
+          <strong data-i18n="slashTitle"></strong>
+          <p class="small muted" data-i18n-html="slashText"></p>
+          <a class="btn secondary" id="inviteBtn2" target="_blank" rel="noopener" data-i18n="inviteOther"></a>
+        </div>
+      </div>
+      <details style="margin-top:16px">
+        <summary data-i18n="mcpTitle"></summary>
+        <p class="small muted" data-i18n="mcpText"></p>
+        <pre>claude mcp add discord-music -- npx -y discord-music-mcp</pre>
+      </details>
+    </div>
+  </section>
+
+  <details class="card small" id="advanced">
+    <summary data-i18n="advanced"></summary>
+    <p class="muted" id="paths"></p>
+    <button class="secondary hidden" id="changeToken" data-i18n="changeToken"></button>
+  </details>
+</main>
+
+<script>
+const REPO = 'https://github.com/YOUR_GITHUB_USERNAME/discord-youtube-dj';
+
+const I18N = {
+  en: {
+    setupTitle: 'Connect your Discord bot',
+    setupIntro: 'One-time setup, about 2 minutes. The bot runs on this computer, so you need your own (free) bot account.',
+    step1: 'Open the <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a>, click <b>New Application</b>, give it a name (e.g. "DJ") and create it.',
+    step2: 'Open the <b>Bot</b> tab on the left, click <b>Reset Token</b> and then <b>Copy</b>.',
+    step3: 'Paste the token below and click <b>Save</b>.',
+    tokenPlaceholder: 'Paste bot token here',
+    save: 'Save',
+    tokenNote: 'The token is stored only on this computer. Treat it like a password and never share it.',
+    inviteTitle: 'Add the bot to your server',
+    inviteIntro: 'Your bot is online. Invite it to a Discord server where you can manage the server.',
+    inviteBtn: 'Invite to server',
+    inviteDone: "I've added it",
+    nowPlaying: 'Now playing',
+    nothing: 'Nothing is playing.',
+    stop: 'Stop',
+    channelTitle: 'Voice channel',
+    channelPick: '— pick a voice channel —',
+    saved: 'Saved.',
+    playTitle: 'Play something',
+    songPlaceholder: 'YouTube link or song name',
+    play: 'Play', search: 'Search',
+    loading: 'Loading…',
+    noResults: 'No results.',
+    moreTitle: 'More ways to play',
+    extTitle: 'Browser extension',
+    extText: 'Whatever you open on YouTube or YouTube Music plays in Discord automatically.',
+    extBtn: 'Download',
+    slashTitle: 'Discord commands',
+    slashText: 'Type <code>/play</code> or <code>/stop</code> in any channel of a server the bot is in.',
+    inviteOther: 'Invite to another server',
+    mcpTitle: 'Control with an AI assistant (MCP)',
+    mcpText: 'Let Claude or another MCP client play music for you. Run this once:',
+    advanced: 'Advanced',
+    changeToken: 'Change bot token',
+    online: 'Online as', connecting: 'Connecting to Discord…', offline: 'Not connected',
+    invalid: 'Saved token was rejected by Discord. Enter a new one.',
+    settingsFile: 'Settings file', logFile: 'Log file', version: 'Version'
+  },
+  tr: {
+    setupTitle: 'Discord botunu bağla',
+    setupIntro: 'Tek seferlik kurulum, yaklaşık 2 dakika. Bot bu bilgisayarda çalışır, bu yüzden kendi (ücretsiz) bot hesabın gerekiyor.',
+    step1: '<a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a>\'ı aç, <b>New Application</b>\'a tıkla, bir isim ver (ör. "DJ") ve oluştur.',
+    step2: 'Soldaki <b>Bot</b> sekmesini aç, <b>Reset Token</b>\'a ve ardından <b>Copy</b>\'ye tıkla.',
+    step3: 'Token\'ı aşağıya yapıştır ve <b>Kaydet</b>\'e tıkla.',
+    tokenPlaceholder: 'Bot token\'ını buraya yapıştır',
+    save: 'Kaydet',
+    tokenNote: 'Token sadece bu bilgisayarda saklanır. Şifre gibidir, kimseyle paylaşma.',
+    inviteTitle: 'Botu sunucuna ekle',
+    inviteIntro: 'Botun çevrimiçi. Yönetebildiğin bir Discord sunucusuna davet et.',
+    inviteBtn: 'Sunucuya davet et',
+    inviteDone: 'Ekledim',
+    nowPlaying: 'Şu an çalıyor',
+    nothing: 'Hiçbir şey çalmıyor.',
+    stop: 'Durdur',
+    channelTitle: 'Ses kanalı',
+    channelPick: '— bir ses kanalı seç —',
+    saved: 'Kaydedildi.',
+    playTitle: 'Bir şey çal',
+    songPlaceholder: 'YouTube linki ya da şarkı adı',
+    play: 'Çal', search: 'Ara',
+    loading: 'Yükleniyor…',
+    noResults: 'Sonuç yok.',
+    moreTitle: 'Çalmanın diğer yolları',
+    extTitle: 'Tarayıcı eklentisi',
+    extText: 'YouTube ya da YouTube Music\'te ne açarsan otomatik olarak Discord\'da çalar.',
+    extBtn: 'İndir',
+    slashTitle: 'Discord komutları',
+    slashText: 'Botun olduğu sunucuda herhangi bir kanala <code>/play</code> ya da <code>/stop</code> yaz.',
+    inviteOther: 'Başka sunucuya davet et',
+    mcpTitle: 'Yapay zeka asistanıyla kontrol et (MCP)',
+    mcpText: 'Claude ya da başka bir MCP istemcisi senin için müzik çalsın. Bir kere çalıştır:',
+    advanced: 'Gelişmiş',
+    changeToken: 'Bot token\'ını değiştir',
+    online: 'Çevrimiçi:', connecting: 'Discord\'a bağlanıyor…', offline: 'Bağlı değil',
+    invalid: 'Kayıtlı token Discord tarafından reddedildi. Yenisini gir.',
+    settingsFile: 'Ayar dosyası', logFile: 'Log dosyası', version: 'Sürüm'
+  }
+};
+
+const $ = (id) => document.getElementById(id);
+let lang = (() => { try { return localStorage.getItem('lang'); } catch { return null; } })()
+  || (navigator.language.startsWith('tr') ? 'tr' : 'en');
+const t = (k) => I18N[lang][k] ?? I18N.en[k] ?? k;
+let state = null;
+let forceSetup = false;
+let inviteDismissed = false;
+
+function applyI18n() {
+  document.documentElement.lang = lang;
+  $('lang').value = lang;
+  document.querySelectorAll('[data-i18n]').forEach((el) => (el.textContent = t(el.dataset.i18n)));
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => (el.innerHTML = t(el.dataset.i18nHtml)));
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => (el.placeholder = t(el.dataset.i18nPlaceholder)));
+  if (state) render();
+}
+$('lang').onchange = () => { lang = $('lang').value; try { localStorage.setItem('lang', lang); } catch {} applyI18n(); };
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function msg(id, text, kind = '') { const el = $(id); el.textContent = text || ''; el.className = 'msg ' + kind; }
+const fmt = (s) => s == null ? '' : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+function render() {
+  const s = state;
+  const needSetup = forceSetup || s.discord === 'no-token' || s.discord === 'invalid-token';
+  const needInvite = !needSetup && s.discord === 'ready' && s.guildCount === 0 && !inviteDismissed;
+
+  $('setup').classList.toggle('hidden', !needSetup);
+  $('invite').classList.toggle('hidden', !needInvite);
+  $('ready').classList.toggle('hidden', needSetup || needInvite || s.discord !== 'ready');
+  $('changeToken').classList.toggle('hidden', needSetup || s.tokenFromEnv);
+
+  const line = $('botLine');
+  if (s.discord === 'ready') line.innerHTML = `<span class="status"><span class="dot ok"></span>${t('online')} <b>${esc(s.botUser.tag)}</b></span>`;
+  else if (s.discord === 'connecting') line.innerHTML = `<span class="status"><span class="dot warn"></span>${t('connecting')}</span>`;
+  else line.innerHTML = `<span class="status"><span class="dot err"></span>${t('offline')}</span>`;
+
+  if (s.discord === 'invalid-token' && !$('setupMsg').textContent) msg('setupMsg', t('invalid'), 'err');
+
+  for (const id of ['inviteBtn', 'inviteBtn2']) if (s.inviteUrl) $(id).href = s.inviteUrl;
+  $('extLink').href = `${REPO}/releases/latest`;
+
+  if (s.nowPlaying) {
+    $('np').innerHTML = `<div class="np-title">${esc(s.nowPlaying.title)}</div>
+      <div class="small muted">${esc(s.currentGuild.guildName || '')} › ${esc(s.currentGuild.channelName || '')}
+      ${s.nowPlaying.duration ? ' · ' + fmt(s.nowPlaying.duration) : ''}</div>
+      <div style="margin-top:10px"><button class="secondary" id="stopBtn">${t('stop')}</button></div>`;
+    $('stopBtn').onclick = async () => { await api('/api/stop', {}); refresh(); };
+  } else {
+    $('np').innerHTML = `<span class="muted">${t('nothing')}</span>`;
+  }
+
+  $('paths').innerHTML = `${t('version')}: ${esc(s.version)} · yt-dlp ${esc(s.ytdlpVersion || '?')}<br>
+    ${t('settingsFile')}: <code>${esc(s.configPath)}</code><br>${t('logFile')}: <code>${esc(s.logPath)}</code>`;
+}
+
+async function loadChannels() {
+  const channels = await api('/api/channels');
+  const sel = $('channel');
+  sel.innerHTML = `<option value="">${t('channelPick')}</option>` + channels.map((c) =>
+    `<option value="${c.guildId}|${c.channelId}">${esc(c.guildName)} › ${esc(c.channelName)}</option>`).join('');
+  if (state?.currentGuild.channelId) sel.value = `${state.currentGuild.id}|${state.currentGuild.channelId}`;
+}
+$('channel').onchange = async () => {
+  const [guildId, channelId] = $('channel').value.split('|');
+  if (!channelId) return;
+  try { await api('/api/channel', { guildId, channelId }); msg('channelMsg', t('saved'), 'ok'); }
+  catch (e) { msg('channelMsg', e.message, 'err'); }
+};
+
+$('saveToken').onclick = async () => {
+  const btn = $('saveToken');
+  btn.disabled = true; msg('setupMsg', t('loading'));
+  try {
+    state = await api('/api/setup/token', { token: $('token').value });
+    $('token').value = ''; forceSetup = false; msg('setupMsg', '');
+    render(); setTimeout(refresh, 1500);
+  } catch (e) { msg('setupMsg', e.message, 'err'); }
+  finally { btn.disabled = false; }
+};
+$('token').onkeydown = (e) => { if (e.key === 'Enter') $('saveToken').click(); };
+$('changeToken').onclick = () => { forceSetup = true; $('advanced').open = false; render(); };
+$('inviteDone').onclick = () => { inviteDismissed = true; refresh(); };
+
+async function playSong(song) {
+  if (!song) return;
+  msg('playMsg', t('loading'));
+  try {
+    const r = await api('/api/play', { song });
+    msg('playMsg', `▶ ${r.title}`, 'ok'); refresh();
+  } catch (e) { msg('playMsg', e.message, 'err'); }
+}
+$('playBtn').onclick = () => playSong($('song').value.trim());
+$('song').onkeydown = (e) => { if (e.key === 'Enter') $('playBtn').click(); };
+$('searchBtn').onclick = async () => {
+  const q = $('song').value.trim(); if (!q) return;
+  msg('playMsg', t('loading')); $('results').innerHTML = '';
+  try {
+    const results = await api(`/api/search?q=${encodeURIComponent(q)}&limit=8`);
+    msg('playMsg', results.length ? '' : t('noResults'));
+    $('results').innerHTML = results.map((r, i) => `<li><div class="t"><div>${esc(r.title)}</div>
+      <div class="small muted">${esc(r.channel || '')} ${r.duration ? '· ' + fmt(r.duration) : ''}</div></div>
+      <button class="secondary" data-i="${i}">${t('play')}</button></li>`).join('');
+    $('results').querySelectorAll('button').forEach((b) => (b.onclick = () => playSong(results[b.dataset.i].url)));
+  } catch (e) { msg('playMsg', e.message, 'err'); }
+};
+
+let channelsLoaded = false;
+async function refresh() {
+  try {
+    const prev = state?.discord;
+    state = await api('/api/status');
+    render();
+    if (state.discord === 'ready' && (!channelsLoaded || prev !== 'ready')) { await loadChannels(); channelsLoaded = true; }
+  } catch {
+    $('botLine').innerHTML = `<span class="status"><span class="dot err"></span>${t('offline')}</span>`;
+  }
+}
+
+applyI18n();
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>

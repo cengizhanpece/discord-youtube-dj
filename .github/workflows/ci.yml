@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: bot/package-lock.json
+      - run: npm ci
+        working-directory: bot
+      - name: Syntax check
+        run: |
+          for f in bot/src/*.js extension/*.js; do node --check "$f"; done
+          node -e "JSON.parse(require('fs').readFileSync('extension/manifest.json'))"
+      - name: Smoke test (starts without a token, serves the dashboard)
+        working-directory: bot
+        env:
+          DATA_DIR: ${{ runner.temp }}/dj
+          PORT: '1299'
+        run: |
+          node src/main.js &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:1299/api/status && break; sleep 1; done
+          curl -sf http://127.0.0.1:1299/ > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Origin: https://evil.example' http://127.0.0.1:1299/api/status)" = 403
