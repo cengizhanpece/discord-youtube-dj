@@ -1,4 +1,4 @@
-const REPO = 'https://github.com/YOUR_GITHUB_USERNAME/discord-youtube-dj';
+const REPO = 'https://github.com/cengizhanpece/discord-youtube-dj';
 const DEFAULTS = { enabled: false, botUrl: 'http://localhost:1231', muteTab: true };
 
 const $ = (id) => document.getElementById(id);

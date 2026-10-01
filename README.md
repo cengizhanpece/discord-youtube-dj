@@ -5,7 +5,7 @@ Play music in your Discord voice channel from:
 - 🌐 **your browser** — whatever you open on YouTube or YouTube Music plays in Discord automatically
 - 💬 **Discord** — `/play <song or link>` and `/stop`
 - 🖥️ **a local dashboard** — search, pick a channel, play
-- 🤖 **an AI assistant** — via the [MCP server](https://github.com/YOUR_GITHUB_USERNAME/discord-music-mcp) ("play some lo-fi in the Lobby")
+- 🤖 **an AI assistant** — via the [MCP server](https://github.com/cengizhanpece/discord-music-mcp) ("play some lo-fi in the Lobby")
 
 The bot runs **on your own computer**. Nothing is hosted anywhere, and YouTube works reliably because requests come from your home connection.
 
@@ -13,7 +13,7 @@ The bot runs **on your own computer**. Nothing is hosted anywhere, and YouTube w
 
 ## Install (Windows)
 
-1. Download **`DiscordYouTubeDJ-Setup-x.y.z.exe`** from the [latest release](https://github.com/YOUR_GITHUB_USERNAME/discord-youtube-dj/releases/latest) and run it.
+1. Download **`DiscordYouTubeDJ-Setup-x.y.z.exe`** from the [latest release](https://github.com/cengizhanpece/discord-youtube-dj/releases/latest) and run it.
    No admin rights or Node.js needed.
    > Windows may show *"Windows protected your PC"* because the installer isn't code-signed. Click **More info → Run anyway**.
 2. The dashboard opens in your browser and walks you through connecting a Discord bot (about 2 minutes):
@@ -28,7 +28,7 @@ The bot starts automatically when you sign in to Windows (you can turn that off 
 
 Works in Chrome, Edge, Brave, Opera and other Chromium browsers.
 
-1. Download **`DiscordYouTubeDJ-Extension-x.y.z.zip`** from the [latest release](https://github.com/YOUR_GITHUB_USERNAME/discord-youtube-dj/releases/latest) and unzip it somewhere permanent (e.g. `Documents\DiscordYouTubeDJ-Extension`).
+1. Download **`DiscordYouTubeDJ-Extension-x.y.z.zip`** from the [latest release](https://github.com/cengizhanpece/discord-youtube-dj/releases/latest) and unzip it somewhere permanent (e.g. `Documents\DiscordYouTubeDJ-Extension`).
 2. Open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode** (top right).
 3. Click **Load unpacked** and pick the unzipped folder.
 4. Click the extension icon, switch it **on**, choose a channel. Open any YouTube video.
@@ -41,7 +41,7 @@ Works in Chrome, Edge, Brave, Opera and other Chromium browsers.
 Requires Node.js 20+.
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/discord-youtube-dj
+git clone https://github.com/cengizhanpece/discord-youtube-dj
 cd discord-youtube-dj/bot
 npm install
 npm start          # opens the dashboard
