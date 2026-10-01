@@ -135,7 +135,11 @@
       <details style="margin-top:16px">
         <summary data-i18n="mcpTitle"></summary>
         <p class="small muted" data-i18n="mcpText"></p>
-        <pre>claude mcp add discord-music -- npx -y discord-music-mcp</pre>
+        <pre>git clone https://github.com/cengizhanpece/discord-music-mcp
+cd discord-music-mcp
+npm install
+claude mcp add discord-music -- node "&lt;full path&gt;/discord-music-mcp/src/index.js"</pre>
+        <p class="small"><a href="https://github.com/cengizhanpece/discord-music-mcp#setup" target="_blank" rel="noopener" data-i18n="mcpGuide"></a></p>
       </details>
     </div>
   </section>
@@ -183,7 +187,8 @@ const I18N = {
     slashText: 'Type <code>/play</code> or <code>/stop</code> in any channel of a server the bot is in.',
     inviteOther: 'Invite to another server',
     mcpTitle: 'Control with an AI assistant (MCP)',
-    mcpText: 'Let Claude or another MCP client play music for you. Run this once:',
+    mcpText: 'Let Claude or another MCP client play music for you. Needs Node.js 20+ and git; it runs on this computer and does not need your token.',
+    mcpGuide: 'Full setup guide (Claude Desktop, Claude Code) →',
     advanced: 'Advanced',
     changeToken: 'Change bot token',
     online: 'Online as', connecting: 'Connecting to Discord…', offline: 'Not connected',
@@ -222,7 +227,8 @@ const I18N = {
     slashText: 'Botun olduğu sunucuda herhangi bir kanala <code>/play</code> ya da <code>/stop</code> yaz.',
     inviteOther: 'Başka sunucuya davet et',
     mcpTitle: 'Yapay zeka asistanıyla kontrol et (MCP)',
-    mcpText: 'Claude ya da başka bir MCP istemcisi senin için müzik çalsın. Bir kere çalıştır:',
+    mcpText: 'Claude ya da başka bir MCP istemcisi senin için müzik çalsın. Node.js 20+ ve git gerekir; bu bilgisayarda çalışır, token\'ına ihtiyaç duymaz.',
+    mcpGuide: 'Detaylı kurulum rehberi (Claude Desktop, Claude Code) →',
     advanced: 'Gelişmiş',
     changeToken: 'Bot token\'ını değiştir',
     online: 'Çevrimiçi:', connecting: 'Discord\'a bağlanıyor…', offline: 'Bağlı değil',

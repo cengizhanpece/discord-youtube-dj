@@ -21,6 +21,9 @@ jobs:
         run: |
           for f in bot/src/*.js extension/*.js; do node --check "$f"; done
           node -e "JSON.parse(require('fs').readFileSync('extension/manifest.json'))"
+          for f in extension/_locales/*/messages.json; do node -e "JSON.parse(require('fs').readFileSync('$f'))"; done
+          # The dashboard's inline <script> isn't covered by node --check
+          node -e "const s=require('fs').readFileSync('bot/public/index.html','utf8'); new Function(s.split('<script>')[1].split('</script>')[0])"
       - name: Smoke test (starts without a token, serves the dashboard)
         working-directory: bot
         env:
