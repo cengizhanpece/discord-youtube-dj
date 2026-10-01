@@ -1,6 +1,6 @@
 // Discord side: the bot client, voice connection and audio player.
 
-import { Client, GatewayIntentBits, Events, ChannelType, Routes, REST } from 'discord.js';
+import { Client, GatewayIntentBits, Events, ChannelType, Routes, REST, PermissionFlagsBits } from 'discord.js';
 import {
   joinVoiceChannel,
   createAudioPlayer,
@@ -16,8 +16,25 @@ import { config } from './config.js';
 import { ytdlp } from './ytdlp.js';
 import { log } from './log.js';
 
-// Connect, Speak, View Channel, Send Messages
-export const BOT_PERMISSIONS = (1n << 20n) | (1n << 21n) | (1n << 10n) | (1n << 11n);
+// Minimal permissions requested by the default invite link.
+export const BOT_PERMISSIONS =
+  PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages |
+  PermissionFlagsBits.Connect | PermissionFlagsBits.Speak;
+
+// What the bot needs in a voice channel to play there.
+const VOICE_PERMISSIONS = {
+  ViewChannel: PermissionFlagsBits.ViewChannel,
+  Connect: PermissionFlagsBits.Connect,
+  Speak: PermissionFlagsBits.Speak
+};
+
+/** Names of the voice permissions the bot is missing in a channel (empty = can play there). */
+function missingPermissions(channel) {
+  const me = channel.guild.members.me;
+  const perms = me ? channel.permissionsFor(me) : null;
+  if (!perms) return Object.keys(VOICE_PERMISSIONS);
+  return Object.entries(VOICE_PERMISSIONS).filter(([, bit]) => !perms.has(bit)).map(([name]) => name);
+}
 
 /** 'no-token' | 'connecting' | 'ready' | 'invalid-token' | 'error' */
 let discordState = 'no-token';
@@ -92,10 +109,12 @@ export async function startDiscord() {
   }
 }
 
-export function getInviteUrl() {
+/** admin=true asks for Administrator: sees every private channel, but is risky if the token leaks. */
+export function getInviteUrl({ admin = false } = {}) {
   const appId = client?.application?.id || client?.user?.id;
   if (!appId) return null;
-  return `https://discord.com/oauth2/authorize?client_id=${appId}&scope=bot%20applications.commands&permissions=${BOT_PERMISSIONS}`;
+  const permissions = admin ? PermissionFlagsBits.Administrator : BOT_PERMISSIONS;
+  return `https://discord.com/oauth2/authorize?client_id=${appId}&scope=bot%20applications.commands&permissions=${permissions}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,7 +125,10 @@ export function listVoiceChannels() {
   if (discordState !== 'ready') return [];
   return client.channels.cache
     .filter((c) => c.type === ChannelType.GuildVoice || c.type === ChannelType.GuildStageVoice)
-    .map((c) => ({ channelName: c.name, channelId: c.id, guildId: c.guild.id, guildName: c.guild.name }))
+    .map((c) => {
+      const missing = missingPermissions(c);
+      return { channelName: c.name, channelId: c.id, guildId: c.guild.id, guildName: c.guild.name, canJoin: !missing.length, missing };
+    })
     .sort((a, b) => a.guildName.localeCompare(b.guildName) || a.channelName.localeCompare(b.channelName));
 }
 
@@ -120,13 +142,25 @@ export function setChannel(guildId, channelId) {
 
 export async function play(url, target) {
   if (discordState !== 'ready') throw new Error('The bot is not connected to Discord yet. Finish setup in the dashboard.');
-  if (target?.guildId && target?.channelId) setChannel(target.guildId, target.channelId);
-
-  const { guildId, channelId } = config;
+  const guildId = target?.guildId && target?.channelId ? target.guildId : config.guildId;
+  const channelId = target?.guildId && target?.channelId ? target.channelId : config.channelId;
   if (!guildId || !channelId) throw new Error('No voice channel selected. Pick one in the dashboard or extension.');
 
   const guild = client.guilds.cache.get(guildId);
   if (!guild) throw new Error('The bot is not in that server anymore. Pick another channel.');
+  const channel = guild.channels.cache.get(channelId);
+  if (!channel) throw new Error('That voice channel no longer exists. Pick another one.');
+
+  // Without this check, joining a channel the bot can't access just times out after 20s.
+  const missing = missingPermissions(channel);
+  if (missing.length) {
+    throw new Error(
+      `The bot can't play in "${channel.name}" (missing: ${missing.join(', ')}). ` +
+      'In Discord: right-click the channel → Edit Channel → Permissions → add the bot and allow ' +
+      'View Channel, Connect and Speak.'
+    );
+  }
+  if (target?.guildId && target?.channelId) setChannel(guildId, channelId);
 
   isSwitching = true;
   try {
@@ -197,6 +231,7 @@ export function getStatus() {
     discordError,
     botUser: client?.user ? { id: client.user.id, tag: client.user.tag, avatar: client.user.displayAvatarURL() } : null,
     inviteUrl: getInviteUrl(),
+    inviteUrlAdmin: getInviteUrl({ admin: true }),
     guildCount: client?.guilds.cache.size ?? 0,
     connected: !!(config.guildId && getVoiceConnection(config.guildId)),
     currentGuild: {

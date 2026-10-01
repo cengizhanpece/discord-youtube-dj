@@ -95,6 +95,13 @@ Click **Invite to server** in the dashboard. It opens Discord with the right per
 
 Use **Invite to another server** later to add more servers.
 
+#### Private (hidden) voice channels
+
+The default invite only asks for the minimum permissions, so the bot can't join **private channels** that your server hides from regular members. These show up with a 🔒 in the dashboard and extension and can't be selected. You have two options:
+
+- **Recommended:** give the bot access to just the channels you need. In Discord, right-click the channel → **Edit Channel** → **Permissions** → **Add members or roles** → pick the bot → allow **View Channel**, **Connect** and **Speak**. The list in the dashboard updates by itself.
+- **Invite as Administrator:** the dashboard has this under *Need private channels?*. The bot then sees every channel. ⚠️ Anyone who gets your bot token could then do anything on that server, such as delete channels or ban members. Only do this on servers where you accept that risk.
+
 ### 4. Pick a voice channel
 
 Pick a voice channel in the dashboard and try **Play**. That's the core setup done.
@@ -180,6 +187,7 @@ The bot listens on `127.0.0.1` only. Browser requests are accepted only from the
 | Extension says **"Bot is not running"** | Start **Discord YouTube DJ** from the Start menu. If you changed the port, update **Settings → Bot address** in the extension. |
 | Dashboard says the token was rejected | The token was reset or copied incompletely. Copy a fresh one (**Reset Token**) and paste it again. |
 | Voice channel list is empty | The bot isn't in any server yet. Use **Invite to server**. |
+| Channel shows 🔒 / *"The bot can't play in …"* | It's a private channel. See [Private voice channels](#private-hidden-voice-channels). |
 | Bot joins but there's no sound | Check `bot.log`. Make sure the bot has **Connect** and **Speak** permission in that channel. |
 | `/play` doesn't show up | Wait a few minutes after the first start, or re-invite the bot with the dashboard's invite link (it includes the commands scope). |
 | "Sign in to confirm you're not a bot" in the log | YouTube is rate-limiting your IP. Wait a while. |

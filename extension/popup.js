@@ -52,7 +52,10 @@ async function refresh() {
     $('channel').add(new Option(msg('pickChannel'), ''));
   }
   for (const c of channels) {
-    $('channel').add(new Option(`${c.guildName} › ${c.channelName}`, `${c.guildId}|${c.channelId}`));
+    const opt = new Option(`${c.canJoin === false ? '🔒 ' : ''}${c.guildName} › ${c.channelName}`, `${c.guildId}|${c.channelId}`);
+    // Locked = the bot lacks View Channel / Connect / Speak there. The dashboard explains how to fix it.
+    opt.disabled = c.canJoin === false;
+    $('channel').add(opt);
   }
   $('channel').value = channels.some((c) => `${c.guildId}|${c.channelId}` === current) ? current : '';
 

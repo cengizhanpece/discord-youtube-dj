@@ -92,6 +92,11 @@
     <p class="muted" data-i18n="inviteIntro"></p>
     <a class="btn" id="inviteBtn" target="_blank" rel="noopener" data-i18n="inviteBtn"></a>
     <button class="secondary" id="inviteDone" data-i18n="inviteDone"></button>
+    <details class="small" style="margin-top:14px">
+      <summary data-i18n="adminTitle"></summary>
+      <p class="muted" data-i18n="adminText"></p>
+      <a class="btn secondary inviteAdmin" target="_blank" rel="noopener" data-i18n="inviteAdmin"></a>
+    </details>
   </section>
 
   <!-- 3) Ready -->
@@ -105,6 +110,12 @@
       <h2 data-i18n="channelTitle"></h2>
       <select id="channel"></select>
       <div class="msg" id="channelMsg"></div>
+      <details class="small hidden" id="lockedHelp">
+        <summary data-i18n="lockedTitle"></summary>
+        <p class="muted" data-i18n-html="lockedText"></p>
+        <p class="muted" data-i18n="adminText"></p>
+        <a class="btn secondary inviteAdmin" target="_blank" rel="noopener" data-i18n="inviteAdmin"></a>
+      </details>
     </div>
 
     <div class="card">
@@ -168,6 +179,11 @@ const I18N = {
     inviteIntro: 'Your bot is online. Invite it to a Discord server where you can manage the server.',
     inviteBtn: 'Invite to server',
     inviteDone: "I've added it",
+    adminTitle: 'Need private channels?',
+    adminText: 'Inviting as Administrator lets the bot see every private channel, but anyone who gets your bot token could then do anything on that server. Prefer giving the bot access to just the channels you need.',
+    inviteAdmin: 'Invite as Administrator',
+    lockedTitle: '🔒 Some channels are locked for the bot',
+    lockedText: 'In Discord, right-click the channel → <b>Edit Channel</b> → <b>Permissions</b> → add the bot (or its role) and allow <b>View Channel</b>, <b>Connect</b> and <b>Speak</b>. The list updates by itself.',
     nowPlaying: 'Now playing',
     nothing: 'Nothing is playing.',
     stop: 'Stop',
@@ -208,6 +224,11 @@ const I18N = {
     inviteIntro: 'Botun çevrimiçi. Yönetebildiğin bir Discord sunucusuna davet et.',
     inviteBtn: 'Sunucuya davet et',
     inviteDone: 'Ekledim',
+    adminTitle: 'Gizli kanallar mı lazım?',
+    adminText: 'Yönetici olarak davet edersen bot tüm gizli kanalları görür; ama bot token\'ını ele geçiren biri o sunucuda her şeyi yapabilir. Mümkünse bota sadece ihtiyacın olan kanallarda erişim ver.',
+    inviteAdmin: 'Yönetici olarak davet et',
+    lockedTitle: '🔒 Bazı kanallar bota kapalı',
+    lockedText: 'Discord\'da kanala sağ tıkla → <b>Kanalı Düzenle</b> → <b>İzinler</b> → botu (ya da rolünü) ekle ve <b>Kanalı Görüntüle</b>, <b>Bağlan</b> ve <b>Konuş</b> izinlerini ver. Liste kendiliğinden güncellenir.',
     nowPlaying: 'Şu an çalıyor',
     nothing: 'Hiçbir şey çalmıyor.',
     stop: 'Durdur',
@@ -286,6 +307,7 @@ function render() {
   if (s.discord === 'invalid-token' && !$('setupMsg').textContent) msg('setupMsg', t('invalid'), 'err');
 
   for (const id of ['inviteBtn', 'inviteBtn2']) if (s.inviteUrl) $(id).href = s.inviteUrl;
+  document.querySelectorAll('.inviteAdmin').forEach((a) => { if (s.inviteUrlAdmin) a.href = s.inviteUrlAdmin; });
   $('extLink').href = `${REPO}/releases/latest`;
 
   if (s.nowPlaying) {
@@ -302,12 +324,19 @@ function render() {
     ${t('settingsFile')}: <code>${esc(s.configPath)}</code><br>${t('logFile')}: <code>${esc(s.logPath)}</code>`;
 }
 
+let channelsKey = '';
 async function loadChannels() {
   const channels = await api('/api/channels');
+  // Permissions can change in Discord at any time; only rebuild the list when something changed
+  // (and never while the user has it open).
+  const key = JSON.stringify(channels) + lang;
   const sel = $('channel');
+  if (key === channelsKey || document.activeElement === sel) return;
+  channelsKey = key;
   sel.innerHTML = `<option value="">${t('channelPick')}</option>` + channels.map((c) =>
-    `<option value="${c.guildId}|${c.channelId}">${esc(c.guildName)} › ${esc(c.channelName)}</option>`).join('');
+    `<option value="${c.guildId}|${c.channelId}"${c.canJoin ? '' : ' disabled'}>${c.canJoin ? '' : '🔒 '}${esc(c.guildName)} › ${esc(c.channelName)}</option>`).join('');
   if (state?.currentGuild.channelId) sel.value = `${state.currentGuild.id}|${state.currentGuild.channelId}`;
+  $('lockedHelp').classList.toggle('hidden', channels.every((c) => c.canJoin));
 }
 $('channel').onchange = async () => {
   const [guildId, channelId] = $('channel').value.split('|');
@@ -353,13 +382,12 @@ $('searchBtn').onclick = async () => {
   } catch (e) { msg('playMsg', e.message, 'err'); }
 };
 
-let channelsLoaded = false;
 async function refresh() {
   try {
     const prev = state?.discord;
     state = await api('/api/status');
     render();
-    if (state.discord === 'ready' && (!channelsLoaded || prev !== 'ready')) { await loadChannels(); channelsLoaded = true; }
+    if (state.discord === 'ready') await loadChannels();
   } catch {
     $('botLine').innerHTML = `<span class="status"><span class="dot err"></span>${t('offline')}</span>`;
   }
