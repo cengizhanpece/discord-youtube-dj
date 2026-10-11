@@ -71,13 +71,48 @@ async function refresh() {
   }
   $('channel').value = channels.some((c) => `${c.guildId}|${c.channelId}` === current) ? current : '';
 
+  await loadNotifyChannels(status.currentGuild);
+
   $('np').textContent = status.nowPlaying?.title || msg('nothingPlaying');
   $('stop').classList.toggle('hidden', !status.nowPlaying);
 }
 
+// "Now playing" messages: one text channel per server, so the list follows the voice channel's server.
+let notifyGuildId = null;
+
+async function loadNotifyChannels(guild) {
+  notifyGuildId = guild.id;
+  $('notifySection').classList.toggle('hidden', !guild.id);
+  if (!guild.id) return;
+
+  const channels = await api(`/api/text-channels?guildId=${encodeURIComponent(guild.id)}`).catch(() => []);
+  const sel = $('notify');
+  sel.innerHTML = '';
+  sel.add(new Option(msg('notifyOff'), ''));
+  for (const c of channels) {
+    const opt = new Option(`${c.canSend ? '' : '🔒 '}# ${c.channelName}`, c.channelId);
+    opt.disabled = !c.canSend; // bot can't post there (no View Channel / Send Messages)
+    sel.add(opt);
+  }
+  sel.value = channels.some((c) => c.channelId === guild.notifyChannelId) ? guild.notifyChannelId : '';
+}
+
+$('notify').onchange = async () => {
+  $('notifyErr').classList.add('hidden');
+  try {
+    await api('/api/notify-channel', { guildId: notifyGuildId, channelId: $('notify').value || null });
+  } catch (e) {
+    $('notifyErr').textContent = e.message;
+    $('notifyErr').classList.remove('hidden');
+    refresh(); // put the select back to what the bot actually has
+  }
+};
+
 $('channel').onchange = async () => {
   const [guildId, channelId] = $('channel').value.split('|');
-  if (channelId) await api('/api/channel', { guildId, channelId }).catch(() => {});
+  if (!channelId) return;
+  await api('/api/channel', { guildId, channelId }).catch(() => {});
+  refresh(); // a different server has a different list of text channels
 };
 
 $('stop').onclick = async () => {

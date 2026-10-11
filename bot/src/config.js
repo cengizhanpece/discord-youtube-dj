@@ -37,7 +37,9 @@ const defaults = {
   // Last voice channel picked in the dashboard / extension / MCP. Remembered across restarts.
   guildId: '',
   channelId: '',
-  // Optional text channel IDs that get a "Now playing" message.
+  // "Now playing" text channel per server: { [guildId]: channelId }. Set from the extension/dashboard.
+  notifyChannels: {},
+  // Legacy (≤1.0.0): flat list of text channel IDs. Migrated into notifyChannels on startup.
   notificationChannels: []
 };
 
@@ -55,7 +57,8 @@ export const config = {
   get port() { return Number(process.env.PORT || current.port); },
   get guildId() { return current.guildId; },
   get channelId() { return current.channelId; },
-  get notificationChannels() { return current.notificationChannels; },
+  get notifyChannels() { return current.notifyChannels || {}; },
+  get notificationChannels() { return current.notificationChannels || []; },
   /** True when the token comes from the environment and must not be edited from the UI. */
   get tokenFromEnv() { return !!process.env.DISCORD_TOKEN; },
   path: configPath,

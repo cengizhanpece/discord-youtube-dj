@@ -122,6 +122,13 @@
         <p class="muted" data-i18n="adminText"></p>
         <a class="btn secondary inviteAdmin" target="_blank" rel="noopener" data-i18n="inviteAdmin"></a>
       </details>
+
+      <div id="notifySection" class="hidden" style="margin-top:16px">
+        <h2 data-i18n="notifyTitle"></h2>
+        <p class="small muted" data-i18n="notifyText"></p>
+        <select id="notify"></select>
+        <div class="msg" id="notifyMsg"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -198,6 +205,9 @@ const I18N = {
     stop: 'Stop',
     channelTitle: 'Voice channel',
     channelPick: '— pick a voice channel —',
+    notifyTitle: '“Now playing” messages',
+    notifyText: 'Post each song to a text channel in this server. Every server has its own setting.',
+    notifyOff: 'Off',
     saved: 'Saved.',
     playTitle: 'Play something',
     songPlaceholder: 'YouTube link or song name',
@@ -246,6 +256,9 @@ const I18N = {
     stop: 'Durdur',
     channelTitle: 'Ses kanalı',
     channelPick: '— bir ses kanalı seç —',
+    notifyTitle: '“Şu an çalıyor” mesajları',
+    notifyText: 'Çalan her şarkıyı bu sunucudaki bir yazı kanalına gönder. Her sunucunun ayarı ayrıdır.',
+    notifyOff: 'Kapalı',
     saved: 'Kaydedildi.',
     playTitle: 'Bir şey çal',
     songPlaceholder: 'YouTube linki ya da şarkı adı',
@@ -359,8 +372,30 @@ async function loadChannels() {
 $('channel').onchange = async () => {
   const [guildId, channelId] = $('channel').value.split('|');
   if (!channelId) return;
-  try { await api('/api/channel', { guildId, channelId }); msg('channelMsg', t('saved'), 'ok'); }
+  try { await api('/api/channel', { guildId, channelId }); msg('channelMsg', t('saved'), 'ok'); refresh(); }
   catch (e) { msg('channelMsg', e.message, 'err'); }
+};
+
+// "Now playing" text channel: one per server, so the list follows the selected voice channel's server.
+let notifyKey = '';
+async function loadNotifyChannels(guild) {
+  $('notifySection').classList.toggle('hidden', !guild.id);
+  if (!guild.id) return;
+  const channels = await api(`/api/text-channels?guildId=${encodeURIComponent(guild.id)}`);
+  const key = JSON.stringify([guild.id, guild.notifyChannelId, channels, lang]);
+  const sel = $('notify');
+  if (key === notifyKey || document.activeElement === sel) return;
+  notifyKey = key;
+  sel.innerHTML = `<option value="">${t('notifyOff')}</option>` + channels.map((c) =>
+    `<option value="${c.channelId}"${c.canSend ? '' : ' disabled'}>${c.canSend ? '' : '🔒 '}#${esc(c.channelName)}</option>`).join('');
+  sel.value = channels.some((c) => c.channelId === guild.notifyChannelId) ? guild.notifyChannelId : '';
+}
+$('notify').onchange = async () => {
+  try {
+    await api('/api/notify-channel', { guildId: state.currentGuild.id, channelId: $('notify').value || null });
+    msg('notifyMsg', t('saved'), 'ok');
+  } catch (e) { msg('notifyMsg', e.message, 'err'); notifyKey = ''; }
+  refresh();
 };
 
 $('saveToken').onclick = async () => {
@@ -405,7 +440,10 @@ async function refresh() {
     const prev = state?.discord;
     state = await api('/api/status');
     render();
-    if (state.discord === 'ready') await loadChannels();
+    if (state.discord === 'ready') {
+      await loadChannels();
+      await loadNotifyChannels(state.currentGuild);
+    }
   } catch {
     $('botLine').innerHTML = `<span class="status"><span class="dot err"></span>${t('offline')}</span>`;
   }

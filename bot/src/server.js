@@ -72,6 +72,13 @@ export function createServer({ version }) {
 
   app.get('/api/channels', route(() => player.listVoiceChannels()));
 
+  // Text channels of one server, for picking where "Now playing" messages go.
+  app.get('/api/text-channels', route((req) => {
+    const guildId = String(req.query.guildId || '');
+    if (!guildId) throw badRequest('Missing guildId');
+    return player.listTextChannels(guildId);
+  }));
+
   app.get('/api/search', route(async (req) => {
     const q = String(req.query.q || '').trim();
     if (!q) throw badRequest('Missing q');
@@ -84,6 +91,18 @@ export function createServer({ version }) {
     const { guildId, channelId } = req.body;
     if (!guildId || !channelId) throw badRequest('guildId and channelId are required');
     player.setChannel(String(guildId), String(channelId));
+    return { success: true };
+  }));
+
+  // body: { guildId, channelId: "<text channel id>" | null }  (null = no "Now playing" messages)
+  app.post('/api/notify-channel', route((req) => {
+    const { guildId, channelId } = req.body;
+    if (!guildId) throw badRequest('guildId is required');
+    try {
+      player.setNotifyChannel(String(guildId), channelId ? String(channelId) : null);
+    } catch (e) {
+      throw badRequest(e.message);
+    }
     return { success: true };
   }));
 

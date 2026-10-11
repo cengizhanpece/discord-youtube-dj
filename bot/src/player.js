@@ -1,6 +1,6 @@
 // Discord side: the bot client, voice connection and audio player.
 
-import { Client, GatewayIntentBits, Events, ChannelType, Routes, REST, PermissionFlagsBits } from 'discord.js';
+import { Client, GatewayIntentBits, Events, ChannelType, Routes, REST, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 import {
   joinVoiceChannel,
   createAudioPlayer,
@@ -17,8 +17,9 @@ import { ytdlp } from './ytdlp.js';
 import { log } from './log.js';
 
 // Minimal permissions requested by the default invite link.
+// Embed Links makes "Now playing" messages show title, thumbnail and duration as a card.
 export const BOT_PERMISSIONS =
-  PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages |
+  PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages | PermissionFlagsBits.EmbedLinks |
   PermissionFlagsBits.Connect | PermissionFlagsBits.Speak;
 
 // What the bot needs in a voice channel to play there.
@@ -28,12 +29,18 @@ const VOICE_PERMISSIONS = {
   Speak: PermissionFlagsBits.Speak
 };
 
-/** Names of the voice permissions the bot is missing in a channel (empty = can play there). */
-function missingPermissions(channel) {
+// What the bot needs in a text channel to post "Now playing" there.
+const TEXT_PERMISSIONS = {
+  ViewChannel: PermissionFlagsBits.ViewChannel,
+  SendMessages: PermissionFlagsBits.SendMessages
+};
+
+/** Names of the permissions the bot is missing in a channel (empty = all good). */
+function missingPermissions(channel, required = VOICE_PERMISSIONS) {
   const me = channel.guild.members.me;
   const perms = me ? channel.permissionsFor(me) : null;
-  if (!perms) return Object.keys(VOICE_PERMISSIONS);
-  return Object.entries(VOICE_PERMISSIONS).filter(([, bit]) => !perms.has(bit)).map(([name]) => name);
+  if (!perms) return Object.keys(required);
+  return Object.entries(required).filter(([, bit]) => !perms.has(bit)).map(([name]) => name);
 }
 
 /** 'no-token' | 'connecting' | 'ready' | 'invalid-token' | 'error' */
@@ -94,6 +101,7 @@ export async function startDiscord() {
   client.once(Events.ClientReady, async (c) => {
     discordState = 'ready';
     log.info(`Logged in to Discord as ${c.user.tag}`);
+    migrateLegacyNotifyChannels();
     await registerCommands(c).catch((e) => log.warn('Could not register slash commands:', e.message));
   });
   client.on(Events.InteractionCreate, handleInteraction);
@@ -137,10 +145,65 @@ export function setChannel(guildId, channelId) {
 }
 
 // ---------------------------------------------------------------------------
+// "Now playing" text channels (one per server)
+// ---------------------------------------------------------------------------
+
+const TEXT_TYPES = new Set([ChannelType.GuildText, ChannelType.GuildAnnouncement]);
+
+/** Text channels of one server, in the order Discord shows them. */
+export function listTextChannels(guildId) {
+  const guild = discordState === 'ready' ? client.guilds.cache.get(guildId) : null;
+  if (!guild) return [];
+  return guild.channels.cache
+    .filter((c) => TEXT_TYPES.has(c.type))
+    .sort((a, b) => (a.parent?.rawPosition ?? -1) - (b.parent?.rawPosition ?? -1) || a.rawPosition - b.rawPosition)
+    .map((c) => {
+      const missing = missingPermissions(c, TEXT_PERMISSIONS);
+      return { channelId: c.id, channelName: c.name, category: c.parent?.name ?? null, canSend: !missing.length, missing };
+    });
+}
+
+/** channelId = null turns notifications off for that server. */
+export function setNotifyChannel(guildId, channelId) {
+  if (channelId) {
+    const channel = client?.guilds.cache.get(guildId)?.channels.cache.get(channelId);
+    if (!channel || !TEXT_TYPES.has(channel.type)) throw new Error('That text channel was not found in this server.');
+    const missing = missingPermissions(channel, TEXT_PERMISSIONS);
+    if (missing.length) {
+      throw new Error(
+        `The bot can't post in #${channel.name} (missing: ${missing.join(', ')}). ` +
+        'In Discord: right-click the channel → Edit Channel → Permissions → add the bot and allow ' +
+        'View Channel and Send Messages.'
+      );
+    }
+  }
+  const notifyChannels = { ...config.notifyChannels };
+  if (channelId) notifyChannels[guildId] = channelId;
+  else delete notifyChannels[guildId];
+  config.update({ notifyChannels });
+}
+
+/** ≤1.0.0 stored a flat list of channel IDs; turn it into one channel per server. */
+function migrateLegacyNotifyChannels() {
+  if (!config.notificationChannels.length) return;
+  const notifyChannels = { ...config.notifyChannels };
+  for (const id of config.notificationChannels) {
+    const channel = client.channels.cache.get(id);
+    if (channel?.guild && !notifyChannels[channel.guild.id]) notifyChannels[channel.guild.id] = id;
+  }
+  config.update({ notifyChannels, notificationChannels: [] });
+  log.info('Migrated notification channels to per-server settings.');
+}
+
+// ---------------------------------------------------------------------------
 // Playback
 // ---------------------------------------------------------------------------
 
-export async function play(url, target) {
+/**
+ * @param target  optional { guildId, channelId } voice channel; defaults to the saved one
+ * @param options { skipNotifyIn?: textChannelId } — don't post "Now playing" there (e.g. /play already replied)
+ */
+export async function play(url, target, options = {}) {
   if (discordState !== 'ready') throw new Error('The bot is not connected to Discord yet. Finish setup in the dashboard.');
   const guildId = target?.guildId && target?.channelId ? target.guildId : config.guildId;
   const channelId = target?.guildId && target?.channelId ? target.channelId : config.channelId;
@@ -196,9 +259,17 @@ export async function play(url, target) {
     audioPlayer.play(resource);
 
     const title = info.title || url;
-    nowPlaying = { title, url, duration: info.duration ?? null, startedAt: new Date().toISOString() };
+    nowPlaying = {
+      title,
+      url,
+      duration: info.duration ?? null,
+      isLive: !!info.is_live,
+      uploader: info.channel || info.uploader || null,
+      thumbnail: info.thumbnail || null,
+      startedAt: new Date().toISOString()
+    };
     log.info(`Playing: ${title}`);
-    notify(title);
+    notify(nowPlaying, channel, options).catch((e) => log.warn('Now-playing message failed:', e.message));
     return { success: true, title };
   } catch (e) {
     killProcess();
@@ -215,13 +286,38 @@ export function stop() {
   if (config.guildId) getVoiceConnection(config.guildId)?.destroy();
 }
 
-async function notify(title) {
-  for (const id of config.notificationChannels) {
-    try {
-      const channel = await client.channels.fetch(id);
-      if (channel?.isTextBased()) await channel.send(`🎶 Now playing: **${title}**`);
-    } catch {}
+const fmtDuration = (s) => {
+  if (s == null) return null;
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = String(Math.floor(s % 60)).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+};
+
+/** Posts "Now playing" to the text channel picked for the voice channel's server, if any. */
+async function notify(track, voiceChannel, { skipNotifyIn } = {}) {
+  const id = config.notifyChannels[voiceChannel.guild.id];
+  if (!id || id === skipNotifyIn) return;
+  const channel = voiceChannel.guild.channels.cache.get(id);
+  if (!channel || missingPermissions(channel, TEXT_PERMISSIONS).length) {
+    log.warn(`Can't post "Now playing" to channel ${id}: missing or no permission.`);
+    return;
   }
+
+  const canEmbed = channel.permissionsFor(voiceChannel.guild.members.me).has(PermissionFlagsBits.EmbedLinks);
+  if (!canEmbed) {
+    // Plain text fallback. <url> suppresses the link preview, which needs Embed Links anyway.
+    await channel.send(`🎶 Now playing in 🔊 **${voiceChannel.name}**: **${track.title}**\n<${track.url}>`);
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setAuthor({ name: `Now playing in 🔊 ${voiceChannel.name}` })
+    .setTitle(track.title.slice(0, 256))
+    .setURL(track.url)
+    .addFields({ name: 'Duration', value: track.isLive ? '🔴 Live' : fmtDuration(track.duration) ?? '?', inline: true });
+  if (track.uploader) embed.addFields({ name: 'Channel', value: track.uploader.slice(0, 1024), inline: true });
+  if (track.thumbnail) embed.setThumbnail(track.thumbnail);
+  await channel.send({ embeds: [embed] });
 }
 
 export function getStatus() {
@@ -238,7 +334,9 @@ export function getStatus() {
       id: config.guildId || null,
       channelId: config.channelId || null,
       guildName: channel?.guildName ?? null,
-      channelName: channel?.channelName ?? null
+      channelName: channel?.channelName ?? null,
+      // "Now playing" text channel for this server (null = off)
+      notifyChannelId: (config.guildId && config.notifyChannels[config.guildId]) || null
     },
     playerState: audioPlayer.state.status,
     nowPlaying
@@ -282,7 +380,7 @@ async function handleInteraction(interaction) {
         if (!first) return interaction.editReply(`No results for "${song}".`);
         song = first.url;
       }
-      const { title } = await play(song, { guildId: voice.guild.id, channelId: voice.id });
+      const { title } = await play(song, { guildId: voice.guild.id, channelId: voice.id }, { skipNotifyIn: interaction.channelId });
       await interaction.editReply(`▶️ **${title}**\n${song}`);
     } catch (e) {
       await interaction.editReply(`❌ ${e.message}`);

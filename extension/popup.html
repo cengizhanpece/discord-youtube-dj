@@ -33,6 +33,7 @@
   details summary { cursor: pointer; color: var(--muted); }
   .check { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
   .foot { margin-top: 14px; display: flex; justify-content: space-between; font-size: 12px; }
+  .err { color: var(--err); font-size: 12px; margin-top: 4px; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -58,6 +59,12 @@
   <div class="section hidden" id="online">
     <label class="lbl" for="channel" data-msg="voiceChannel"></label>
     <select id="channel"></select>
+
+    <div class="section hidden" id="notifySection">
+      <label class="lbl" for="notify" data-msg="notifyChannel"></label>
+      <select id="notify"></select>
+      <div class="err hidden" id="notifyErr"></div>
+    </div>
 
     <div class="section">
       <label class="lbl" data-msg="nowPlaying"></label>

@@ -49,7 +49,7 @@ The extension and the MCP server **never talk to Discord directly** and never se
 | Discord **bot token** | ✅ | 🔒 **yes** — like a password | Developer Portal → your app → **Bot** → **Reset Token** | Pasted once into the dashboard (stored in `config.json`, see below) |
 | "Manage Server" permission on the target Discord server | ✅ | — | You own the server, or ask an admin | Needed to accept the bot invite |
 | Voice channel | ✅ | — | Picked from a list in the dashboard / extension | Saved automatically |
-| Text channel IDs for "Now playing" messages | optional | no | Discord → **Settings → Advanced → Developer Mode** on, then right-click a channel → **Copy Channel ID** | `notificationChannels` in `config.json` |
+| Text channel for "Now playing" messages | optional | — | Picked from a list in the extension / dashboard, one per server | Saved automatically |
 
 **Not needed** (in case you're used to other bots): no Application ID, no Client Secret, no Public Key, no OAuth2 redirect, no **Privileged Gateway Intents**, no server/channel IDs to type in, no extension ID, no YouTube API key, no YouTube cookies.
 
@@ -91,7 +91,7 @@ The dashboard shows these steps too.
 
 ### 3. Invite the bot to your server
 
-Click **Invite to server** in the dashboard. It opens Discord with the right permissions already filled in (View Channels, Send Messages, Connect, Speak, and slash commands). Pick your server → **Authorize**.
+Click **Invite to server** in the dashboard. It opens Discord with the right permissions already filled in (View Channels, Send Messages, Embed Links, Connect, Speak, and slash commands). Pick your server → **Authorize**.
 
 Use **Invite to another server** later to add more servers.
 
@@ -119,11 +119,19 @@ You don't need to enter an extension ID or any other ID. The extension finds the
 
 **Updating:** unzip the new version over the same folder, then click ↻ on the extension card in `chrome://extensions`.
 
-### 6. Slash commands (no setup)
+### 6. "Now playing" messages (optional)
+
+The bot can post every song it plays to a text channel, with title, link, duration and thumbnail. Choose the channel in the extension popup or the dashboard under **“Now playing” messages**, or pick **Off**. Each server has its own setting. When you switch to a voice channel in another server, that server's setting applies.
+
+- Channels marked 🔒 are ones the bot can't post in. To fix it, give the bot **View Channel** and **Send Messages** in that channel (right-click → **Edit Channel** → **Permissions**).
+- Messages show as a card only if the bot has **Embed Links**. Bots invited with v1.0.0 don't have it and post a plain-text line instead. To get cards, re-invite the bot from the dashboard; this doesn't remove it from the server.
+- `/play` already replies in the channel where you type it, so the bot doesn't post the same song again there.
+
+### 7. Slash commands (no setup)
 
 In any server the bot is in, type `/play <song or link>` while you are in a voice channel, or `/stop`. Slash commands can take a few minutes to appear the first time.
 
-### 7. AI assistant / MCP (optional)
+### 8. AI assistant / MCP (optional)
 
 Follow the setup in [discord-music-mcp](https://github.com/cengizhanpece/discord-music-mcp#setup). It needs this bot running and set up first, plus Node.js 20+ and git. It doesn't need your token.
 
@@ -148,7 +156,9 @@ It contains:
     "port": 1231,                  // local API/dashboard port
     "guildId": "…",                // last picked voice channel, set automatically
     "channelId": "…",
-    "notificationChannels": []     // optional: text channel IDs that get "Now playing" messages
+    "notifyChannels": {            // "Now playing" text channel per server, set from the extension/dashboard
+      "<server id>": "<text channel id>"
+    }
   }
   ```
   Restart the bot after editing the file by hand.
@@ -176,6 +186,8 @@ The bot listens on `127.0.0.1` only. Browser requests are accepted only from the
 | GET | `/api/status` | |
 | GET | `/api/channels` | |
 | POST | `/api/channel` | `{ guildId, channelId }` |
+| GET | `/api/text-channels` | `?guildId=…` |
+| POST | `/api/notify-channel` | `{ guildId, channelId }` (`null` = off) |
 | GET | `/api/search` | `?q=…&limit=5` |
 | POST | `/api/play` | `{ song: "<url or search text>", guildId?, channelId? }` |
 | POST | `/api/stop` | `{}` |

@@ -49,5 +49,11 @@
   },
   "updateAvailable": {
     "message": "⬆ Update available"
+  },
+  "notifyChannel": {
+    "message": "“Now playing” messages"
+  },
+  "notifyOff": {
+    "message": "Off"
   }
 }

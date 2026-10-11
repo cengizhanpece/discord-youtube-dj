@@ -49,5 +49,11 @@
   },
   "updateAvailable": {
     "message": "⬆ Güncelleme var"
+  },
+  "notifyChannel": {
+    "message": "“Şu an çalıyor” mesajları"
+  },
+  "notifyOff": {
+    "message": "Kapalı"
   }
 }
