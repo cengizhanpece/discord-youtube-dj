@@ -1,6 +1,6 @@
 {
   "name": "discord-youtube-dj-bot",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Self-hosted Discord music bot controlled from your browser, a local dashboard or an AI assistant (MCP)",
   "type": "module",
