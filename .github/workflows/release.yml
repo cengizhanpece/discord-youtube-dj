@@ -29,8 +29,14 @@ jobs:
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF#refs/tags/v}"; else V="0.0.0-dev"; fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
-          # Keep the versions shown in the app and extension in sync with the tag.
-          node -e "for (const f of ['bot/package.json','extension/manifest.json']) { const fs=require('fs'); const j=JSON.parse(fs.readFileSync(f)); j.version='${V%%-*}'; fs.writeFileSync(f, JSON.stringify(j,null,2)+'\n'); }"
+          if [[ "$V" == "0.0.0-dev" ]]; then
+            # Manual test builds: mark them 0.0.0 so they never look newer than a real release.
+            node -e "for (const f of ['bot/package.json','extension/manifest.json']) { const fs=require('fs'); const j=JSON.parse(fs.readFileSync(f)); j.version='0.0.0'; fs.writeFileSync(f, JSON.stringify(j,null,2)+'\n'); }"
+          else
+            # Releases: the committed versions must already match the tag, so people running
+            # from source see the right version. Bump both files before tagging.
+            node -e "for (const f of ['bot/package.json','extension/manifest.json']) { const v=JSON.parse(require('fs').readFileSync(f)).version; if (v !== '$V') { console.error(f + ' is ' + v + ' but the tag is v$V. Bump it before tagging.'); process.exit(1); } }"
+          fi
 
       - name: Stage installer files
         run: node installer/build.mjs

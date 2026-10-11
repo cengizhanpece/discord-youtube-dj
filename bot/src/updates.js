@@ -4,9 +4,11 @@
 import { log } from './log.js';
 
 const REPO = 'cengizhanpece/discord-youtube-dj';
-const CHECK_EVERY = 6 * 60 * 60 * 1000;
+const CHECK_EVERY = 60 * 60 * 1000;
+// Always points at the newest release, even if our cached result is a bit old.
+const LATEST_URL = `https://github.com/${REPO}/releases/latest`;
 
-let latest = null; // { version, url }
+let latest = null; // { version }
 let lastCheck = 0;
 let checking = false;
 
@@ -28,7 +30,7 @@ async function check() {
     if (res.status === 404) latest = null; // no releases yet
     else if (res.ok) {
       const r = await res.json();
-      latest = { version: r.tag_name.replace(/^v/, ''), url: r.html_url };
+      latest = { version: r.tag_name.replace(/^v/, '') };
     }
     lastCheck = Date.now();
   } catch (e) {
@@ -44,7 +46,7 @@ export function getUpdateInfo(currentVersion) {
   if (!checking && Date.now() - lastCheck > CHECK_EVERY) check();
   return {
     latestVersion: latest?.version ?? null,
-    updateUrl: latest?.url ?? `https://github.com/${REPO}/releases/latest`,
+    updateUrl: LATEST_URL,
     updateAvailable: !!latest && isNewer(latest.version, currentVersion)
   };
 }

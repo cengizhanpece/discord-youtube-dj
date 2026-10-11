@@ -237,7 +237,7 @@ installer/   Windows installer: build.mjs stages files, setup.iss is the Inno Se
 assets/      Source icon
 ```
 
-**Releasing:** push a tag `vX.Y.Z`. GitHub Actions builds the installer and the extension zip and attaches them to a new release.
+**Releasing:** set the same version in `bot/package.json` and `extension/manifest.json`, commit, then push a tag `vX.Y.Z`. The build fails if the tag and the files disagree. GitHub Actions builds the installer and the extension zip and attaches them to a new release.
 
 ## License
 
