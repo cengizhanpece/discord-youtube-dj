@@ -55,5 +55,8 @@
   },
   "notifyOff": {
     "message": "Kapalı"
+  },
+  "playFailed": {
+    "message": "Son şarkı çalınamadı"
   }
 }

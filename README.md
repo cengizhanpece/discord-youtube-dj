@@ -203,6 +203,7 @@ The bot listens on `127.0.0.1` only. Browser requests are accepted only from the
 | Bot joins but there's no sound | Check `bot.log`. Make sure the bot has **Connect** and **Speak** permission in that channel. |
 | `/play` doesn't show up | Wait a few minutes after the first start, or re-invite the bot with the dashboard's invite link (it includes the commands scope). |
 | "Sign in to confirm you're not a bot" in the log | YouTube is rate-limiting your IP. Wait a while. |
+| Bot joins the channel but **nothing plays**; the dashboard says *"Could not play the last song"* with an `SSL` / `INVALID_SESSION_ID` / connection error | Something on your PC or network breaks the connection to YouTube's video servers. Most often it's a DPI-bypass tool. See [GoodbyeDPI / zapret](#goodbyedpi--zapret-users). |
 
 ## Updating
 
@@ -211,6 +212,17 @@ When a new release is out, the dashboard (and the extension popup) shows **Downl
 - **Bot (Windows):** download the new `DiscordYouTubeDJ-Setup-x.y.z.exe` and run it. You don't need to uninstall first. The installer stops the running bot, replaces the program files, and keeps your settings and token.
 - **Bot (from source):** `git pull`, then `npm install` in `bot/` and restart.
 - **Extension:** unzip the new zip **over the same folder**, then click ↻ on the extension card in `chrome://extensions`. Use the same folder: a different path counts as a new extension, and its settings start from scratch.
+
+### GoodbyeDPI / zapret users
+
+Tools like **GoodbyeDPI** send a *fake* TLS packet at the start of each connection. Its TTL (e.g. `--set-ttl 5`) is meant to let it reach your ISP's filter but expire before reaching the real server. YouTube often serves video from **cache servers inside your ISP's network**, which can be just as many hops away as that TTL. The fake packet then reaches the cache server, and it drops the connection. The YouTube page still loads, but the audio download fails. Your browser usually isn't affected because it uses QUIC.
+
+Check it: run `tracert <cache server IP>`. The IP is in `bot.log` or you can get it with `yt-dlp -g`. If the hop count is **less than or equal to** your `--set-ttl`, that's the cause.
+
+Fixes, from simplest:
+
+1. **Lower the TTL** to one less than the cache server's hop count, e.g. `--set-ttl 4` when the cache is 5 hops away. Change it in your GoodbyeDPI service and restart it. If Discord stops working, the filter is further away; go back to the old value.
+2. **Limit GoodbyeDPI to the sites you need** with `--blacklist <file>`, a text file with one domain per line (e.g. `discord.com`, `discord.gg`, `discordapp.com`, `discord.media`). Then YouTube traffic isn't touched at all.
 
 ## Uninstall
 

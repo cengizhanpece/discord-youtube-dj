@@ -75,6 +75,10 @@ async function refresh() {
 
   $('np').textContent = status.nowPlaying?.title || msg('nothingPlaying');
   $('stop').classList.toggle('hidden', !status.nowPlaying);
+  // The bot joined but yt-dlp couldn't download the audio; show why instead of silence.
+  const failed = !status.nowPlaying && status.lastError;
+  $('playErr').classList.toggle('hidden', !failed);
+  if (failed) $('playErr').textContent = `${msg('playFailed')}: ${status.lastError.hint || status.lastError.detail}`;
 }
 
 // "Now playing" messages: one text channel per server, so the list follows the voice channel's server.

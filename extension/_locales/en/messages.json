@@ -55,5 +55,8 @@
   },
   "notifyOff": {
     "message": "Off"
+  },
+  "playFailed": {
+    "message": "Could not play the last song"
   }
 }

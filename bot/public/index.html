@@ -202,6 +202,8 @@ const I18N = {
     lockedText: 'In Discord, right-click the channel → <b>Edit Channel</b> → <b>Permissions</b> → add the bot (or its role) and allow <b>View Channel</b>, <b>Connect</b> and <b>Speak</b>. The list updates by itself.',
     nowPlaying: 'Now playing',
     nothing: 'Nothing is playing.',
+    playFailed: 'Could not play the last song',
+    details: 'Details',
     stop: 'Stop',
     channelTitle: 'Voice channel',
     channelPick: '— pick a voice channel —',
@@ -253,6 +255,8 @@ const I18N = {
     lockedText: 'Discord\'da kanala sağ tıkla → <b>Kanalı Düzenle</b> → <b>İzinler</b> → botu (ya da rolünü) ekle ve <b>Kanalı Görüntüle</b>, <b>Bağlan</b> ve <b>Konuş</b> izinlerini ver. Liste kendiliğinden güncellenir.',
     nowPlaying: 'Şu an çalıyor',
     nothing: 'Hiçbir şey çalmıyor.',
+    playFailed: 'Son şarkı çalınamadı',
+    details: 'Ayrıntılar',
     stop: 'Durdur',
     channelTitle: 'Ses kanalı',
     channelPick: '— bir ses kanalı seç —',
@@ -347,6 +351,12 @@ function render() {
       ${s.nowPlaying.duration ? ' · ' + fmt(s.nowPlaying.duration) : ''}</div>
       <div style="margin-top:10px"><button class="secondary" id="stopBtn">${t('stop')}</button></div>`;
     $('stopBtn').onclick = async () => { await api('/api/stop', {}); refresh(); };
+  } else if (s.lastError) {
+    // yt-dlp failed to download: without this the bot would just sit silently in the channel.
+    $('np').innerHTML = `<div class="np-title" style="color:var(--err)">${t('playFailed')}</div>
+      <div class="small">${esc(s.lastError.title)}</div>
+      ${s.lastError.hint ? `<p class="small">${esc(s.lastError.hint)}</p>` : ''}
+      <details class="small"><summary>${t('details')}</summary><pre>${esc(s.lastError.detail)}</pre></details>`;
   } else {
     $('np').innerHTML = `<span class="muted">${t('nothing')}</span>`;
   }

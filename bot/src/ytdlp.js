@@ -83,15 +83,26 @@ export const ytdlp = {
     });
   },
 
-  /** Starts streaming audio to stdout. Caller owns the returned process. */
+  /**
+   * Starts streaming audio to stdout. Caller owns the returned process.
+   * proc.lastError() returns yt-dlp's last "ERROR: …" line (or last stderr line), if any.
+   */
   stream(url) {
     const proc = spawn(
       ytdlpPath,
-      [url, '-f', 'bestaudio[ext=webm]/bestaudio/best', '--no-playlist', '--quiet', '--no-warnings', '-o', '-'],
+      // Fewer retries than the default 10, so a broken connection is reported in seconds, not a minute.
+      [url, '-f', 'bestaudio[ext=webm]/bestaudio/best', '--no-playlist', '--quiet', '--no-warnings',
+        '--retries', '3', '-o', '-'],
       { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }
     );
-    // Drain stderr so the pipe buffer never fills up and blocks yt-dlp.
-    proc.stderr.on('data', () => {});
+    // Keep reading stderr so its pipe buffer never fills up and blocks yt-dlp,
+    // and remember the tail so failures can be reported instead of silently playing nothing.
+    let tail = '';
+    proc.stderr.on('data', (d) => { tail = (tail + d).slice(-4000); });
+    proc.lastError = () => {
+      const lines = tail.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      return [...lines].reverse().find((l) => l.startsWith('ERROR:')) || lines.pop() || null;
+    };
     return proc;
   }
 };

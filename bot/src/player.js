@@ -52,6 +52,8 @@ const audioPlayer = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberB
 let currentProcess = null;
 let isSwitching = false;
 let nowPlaying = null;
+/** Last playback failure that would otherwise be silent (e.g. yt-dlp couldn't download). */
+let lastError = null;
 
 audioPlayer.on('error', (e) => log.warn('Player error (ignored):', e.message));
 audioPlayer.on(AudioPlayerStatus.Idle, () => {
@@ -62,8 +64,9 @@ audioPlayer.on(AudioPlayerStatus.Idle, () => {
 
 function killProcess() {
   if (!currentProcess) return;
-  currentProcess.stdout?.removeAllListeners();
-  currentProcess.removeAllListeners();
+  // Mark it instead of stripping listeners: removing stdout's listeners also removed its error
+  // handler, so the audio pipeline's "Premature close" on a song switch became an uncaught exception.
+  currentProcess.killedByUs = true;
   try { if (!currentProcess.killed) currentProcess.kill('SIGKILL'); } catch {}
   currentProcess = null;
 }
@@ -226,6 +229,7 @@ export async function play(url, target, options = {}) {
   if (target?.guildId && target?.channelId) setChannel(guildId, channelId);
 
   isSwitching = true;
+  lastError = null;
   try {
     killProcess();
     let info;
@@ -249,6 +253,21 @@ export async function play(url, target, options = {}) {
     const proc = ytdlp.stream(url);
     currentProcess = proc;
     proc.stdout.on('error', () => {});
+
+    // yt-dlp can fail after the voice connection is up (blocked/reset connection to YouTube's
+    // video servers, age-restricted video…). Without this the bot sits in the channel in silence.
+    let received = 0;
+    proc.stdout.on('data', (chunk) => { received += chunk.length; });
+    // 'exit' fires as soon as yt-dlp quits, before the empty stream makes the player go idle.
+    proc.once('exit', (code) => {
+      if (code === 0 || proc.killedByUs) return; // finished normally, or replaced/stopped by us
+      const detail = proc.lastError() || `yt-dlp exited with code ${code}`;
+      log.error(`yt-dlp could not stream ${url}: ${detail}`);
+      if (received === 0) {
+        lastError = { title: nowPlaying?.title ?? url, url, detail, hint: hintFor(detail), at: new Date().toISOString() };
+        nowPlaying = null;
+      }
+    });
 
     const resource = createAudioResource(proc.stdout, { inputType: StreamType.WebmOpus });
     resource.playStream.on('error', (e) => {
@@ -281,9 +300,20 @@ export async function play(url, target, options = {}) {
 
 export function stop() {
   nowPlaying = null;
+  lastError = null;
   killProcess();
   audioPlayer.stop(true);
   if (config.guildId) getVoiceConnection(config.guildId)?.destroy();
+}
+
+/** A short, actionable explanation for common yt-dlp failures. */
+function hintFor(detail) {
+  if (/SSL|TLS|INVALID_SESSION_ID|Connection reset|10054|timed out|Unable to connect|getaddrinfo/i.test(detail)) {
+    return "The connection to YouTube's video servers failed. A DPI-bypass tool (GoodbyeDPI, zapret…), VPN, antivirus or firewall may be interfering. See Troubleshooting in the README.";
+  }
+  if (/Sign in to confirm|bot/i.test(detail)) return 'YouTube is rate-limiting this connection. Wait a while and try again.';
+  if (/age|private|unavailable|members-only/i.test(detail)) return "This video can't be played (private, unavailable or age-restricted).";
+  return null;
 }
 
 const fmtDuration = (s) => {
@@ -339,7 +369,8 @@ export function getStatus() {
       notifyChannelId: (config.guildId && config.notifyChannels[config.guildId]) || null
     },
     playerState: audioPlayer.state.status,
-    nowPlaying
+    nowPlaying,
+    lastError
   };
 }
 
