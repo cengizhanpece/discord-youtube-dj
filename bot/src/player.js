@@ -309,7 +309,7 @@ export function stop() {
 /** A short, actionable explanation for common yt-dlp failures. */
 function hintFor(detail) {
   if (/SSL|TLS|INVALID_SESSION_ID|Connection reset|10054|timed out|Unable to connect|getaddrinfo/i.test(detail)) {
-    return "The connection to YouTube's video servers failed. A DPI-bypass tool (GoodbyeDPI, zapret…), VPN, antivirus or firewall may be interfering. See Troubleshooting in the README.";
+    return "The connection to YouTube's video servers failed. Something on this computer or network (VPN, proxy, antivirus, firewall…) may be blocking it.";
   }
   if (/Sign in to confirm|bot/i.test(detail)) return 'YouTube is rate-limiting this connection. Wait a while and try again.';
   if (/age|private|unavailable|members-only/i.test(detail)) return "This video can't be played (private, unavailable or age-restricted).";
