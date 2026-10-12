@@ -217,7 +217,7 @@ When a new release is out, the dashboard (and the extension popup) shows **Downl
 
 Tools like **GoodbyeDPI** send a *fake* TLS packet at the start of each connection. Its TTL (e.g. `--set-ttl 5`) is meant to let it reach your ISP's filter but expire before reaching the real server. YouTube often serves video from **cache servers inside your ISP's network**, which can be just as many hops away as that TTL. The fake packet then reaches the cache server, and it drops the connection. The YouTube page still loads, but the audio download fails. Your browser usually isn't affected because it uses QUIC.
 
-Check it: run `tracert <cache server IP>`. The IP is in `bot.log` or you can get it with `yt-dlp -g`. If the hop count is **less than or equal to** your `--set-ttl`, that's the cause.
+Check it: run `yt-dlp -g -f 251 <video url>` (the yt-dlp in your settings folder's `bin\`) and note the host in the printed URL (`rr…googlevideo.com`). Then run `tracert <that host>`. If the hop count is **less than or equal to** your `--set-ttl`, that's the cause.
 
 Fixes, from simplest:
 
