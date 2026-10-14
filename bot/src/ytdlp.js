@@ -90,9 +90,11 @@ export const ytdlp = {
   stream(url) {
     const proc = spawn(
       ytdlpPath,
-      // Fewer retries than the default 10, so a broken connection is reported in seconds, not a minute.
+      // Connections to YouTube's video servers sometimes drop mid-song. yt-dlp resumes where it
+      // stopped, but by default retries without waiting, so a 1-second hiccup used up every retry
+      // and cut the song off. Back off 1, 2, 4, 4… seconds instead (≈30s in total).
       [url, '-f', 'bestaudio[ext=webm]/bestaudio/best', '--no-playlist', '--quiet', '--no-warnings',
-        '--retries', '3', '-o', '-'],
+        '--retries', '10', '--retry-sleep', 'http:exp=1:4', '-o', '-'],
       { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }
     );
     // Keep reading stderr so its pipe buffer never fills up and blocks yt-dlp,

@@ -205,6 +205,7 @@ function migrateLegacyNotifyChannels() {
 /**
  * @param target  optional { guildId, channelId } voice channel; defaults to the saved one
  * @param options { skipNotifyIn?: textChannelId } — don't post "Now playing" there (e.g. /play already replied)
+ *                { isRetry?: true } — internal: automatic second attempt after a 403, no new message
  */
 export async function play(url, target, options = {}) {
   if (discordState !== 'ready') throw new Error('The bot is not connected to Discord yet. Finish setup in the dashboard.');
@@ -262,6 +263,16 @@ export async function play(url, target, options = {}) {
     proc.once('exit', (code) => {
       if (code === 0 || proc.killedByUs) return; // finished normally, or replaced/stopped by us
       const detail = proc.lastError() || `yt-dlp exited with code ${code}`;
+
+      // YouTube sometimes rejects a freshly issued download link (403). A new extraction gets a
+      // new link and usually works, so try once more before giving up.
+      if (received === 0 && /HTTP Error 403/.test(detail) && !options.isRetry) {
+        log.warn(`yt-dlp got 403 for ${url}, retrying once with a fresh link`);
+        play(url, { guildId: channel.guild.id, channelId: channel.id }, { ...options, isRetry: true })
+          .catch((e) => log.error('Retry failed:', e.message));
+        return;
+      }
+
       log.error(`yt-dlp could not stream ${url}: ${detail}`);
       if (received === 0) {
         lastError = { title: nowPlaying?.title ?? url, url, detail, hint: hintFor(detail), at: new Date().toISOString() };
@@ -288,7 +299,7 @@ export async function play(url, target, options = {}) {
       startedAt: new Date().toISOString()
     };
     log.info(`Playing: ${title}`);
-    notify(nowPlaying, channel, options).catch((e) => log.warn('Now-playing message failed:', e.message));
+    if (!options.isRetry) notify(nowPlaying, channel, options).catch((e) => log.warn('Now-playing message failed:', e.message));
     return { success: true, title };
   } catch (e) {
     killProcess();
